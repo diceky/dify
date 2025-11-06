@@ -1,0 +1,181 @@
+# render.yaml — Dify (Web, API, Worker) + Postgres + Redis
+# Gemini via Google AI Studio is the default LLM provider.
+
+services:
+  # 1) Dify Web (Studio UI)
+  - type: web
+    name: dify-web
+    runtime: docker
+    image:
+      url: langgenius/dify-web:latest
+    plan: starter
+    envVars:
+      # URLs (auto-wire to live service URLs)
+      - key: CONSOLE_WEB_URL
+        fromService: { name: dify-web, type: web, property: url }
+      - key: APP_WEB_URL
+        fromService: { name: dify-web, type: web, property: url }
+      - key: CONSOLE_API_URL
+        fromService: { name: dify-api, type: web, property: url }
+      - key: SERVICE_API_URL
+        fromService: { name: dify-api, type: web, property: url }
+      - key: APP_API_URL
+        fromService: { name: dify-api, type: web, property: url }
+      - key: FILES_URL
+        fromService: { name: dify-api, type: web, property: url }
+
+      # Core secret (copy this value into API & Worker after first deploy)
+      - key: SECRET_KEY
+        generateValue: true
+
+      # Backing services
+      - key: DATABASE_URL
+        fromDatabase: { name: dify-postgres, property: connectionString }
+      - key: REDIS_URL
+        fromService: { name: dify-redis, type: redis, property: connectionString }
+
+      # ===== Gemini as default =====
+      - key: DEFAULT_MODEL_PROVIDER
+        value: google
+      - key: GOOGLE_API_KEY
+        sync: false         # fill in after apply
+      - key: GOOGLE_MODEL
+        value: gemini-1.5-flash
+      # ============================
+
+      # Optional: leave OpenAI blank if unused
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # Storage: choose ONE style. Easiest = S3; simplest for tests = local.
+      # (A) Local (requires the same disk mounted on API + Worker too)
+      # - key: STORAGE_TYPE
+      #   value: local
+
+      # (B) S3 (recommended for workshops/scale)
+      # - key: STORAGE_TYPE
+      #   value: s3
+      # - key: S3_ENDPOINT
+      #   value: https://s3.ap-southeast-2.amazonaws.com
+      # - key: S3_REGION
+      #   value: ap-southeast-2
+      # - key: S3_BUCKET
+      #   value: dify-files
+      # - key: S3_ACCESS_KEY
+      #   sync: false
+      # - key: S3_SECRET_KEY
+      #   sync: false
+
+      # SMTP (only if you want email invites/resets)
+      # - key: MAIL_TYPE
+      #   value: smtp
+      # - key: SMTP_SERVER
+      #   value: smtp.sendgrid.net
+      # - key: SMTP_PORT
+      #   value: "587"
+      # - key: SMTP_USERNAME
+      #   value: apikey
+      # - key: SMTP_PASSWORD
+      #   sync: false
+      # - key: MAIL_DEFAULT_SEND_FROM
+      #   value: noreply@example.com
+
+  # 2) Dify API (REST + file server)
+  - type: web
+    name: dify-api
+    runtime: docker
+    image:
+      url: langgenius/dify-api:latest
+    plan: starter
+    envVars:
+      - key: SERVICE_API_URL
+        fromService: { name: dify-api, type: web, property: url }
+      - key: CONSOLE_API_URL
+        fromService: { name: dify-api, type: web, property: url }
+      - key: APP_API_URL
+        fromService: { name: dify-api, type: web, property: url }
+      - key: FILES_URL
+        fromService: { name: dify-api, type: web, property: url }
+      - key: CONSOLE_WEB_URL
+        fromService: { name: dify-web, type: web, property: url }
+      - key: APP_WEB_URL
+        fromService: { name: dify-web, type: web, property: url }
+
+      # Copy SECRET_KEY value from dify-web after first apply so all match
+      - key: SECRET_KEY
+        sync: false
+
+      - key: DATABASE_URL
+        fromDatabase: { name: dify-postgres, property: connectionString }
+      - key: REDIS_URL
+        fromService: { name: dify-redis, type: redis, property: connectionString }
+
+      # ===== Gemini defaults (same as web) =====
+      - key: DEFAULT_MODEL_PROVIDER
+        value: google
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_MODEL
+        value: gemini-1.5-flash
+      # =========================================
+
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # Storage (match your choice in web)
+      # - key: STORAGE_TYPE
+      #   value: local
+      # If local, mount the same disk path below.
+
+    # Uncomment ONLY if using LOCAL storage
+    # disk:
+    #   name: dify-storage
+    #   mountPath: /app/api/storage
+    #   sizeGB: 5
+
+  # 3) Dify Worker (background jobs)
+  - type: worker
+    name: dify-worker
+    runtime: docker
+    image:
+      url: langgenius/dify-worker:latest
+    plan: starter
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase: { name: dify-postgres, property: connectionString }
+      - key: REDIS_URL
+        fromService: { name: dify-redis, type: redis, property: connectionString }
+
+      # ===== Gemini defaults =====
+      - key: DEFAULT_MODEL_PROVIDER
+        value: google
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_MODEL
+        value: gemini-1.5-flash
+      # ===========================
+
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # Storage (match API)
+      # - key: STORAGE_TYPE
+      #   value: local
+
+    # Uncomment ONLY if using LOCAL storage (path must match API)
+    # disk:
+    #   name: dify-storage
+    #   mountPath: /app/api/storage
+    #   sizeGB: 5
+
+databases:
+  - name: dify-postgres
+    plan: starter
+
+# Managed Redis (first-party) on Render via Blueprint
+services:
+  - type: redis
+    name: dify-redis
+    plan: starter
