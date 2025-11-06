@@ -1,9 +1,11 @@
-# render.yaml — Dify (Web, API, Worker) + Postgres
-# Gemini via Google AI Studio is the default LLM provider.
-# You will add REDIS_URL manually after deploy (Upstash or self-hosted).
+# Dify on Render — Web, API, Worker + Postgres
+# You will manually fill:
+# - GOOGLE_API_KEY (Gemini)
+# - SECRET_KEY (copy from web into api & worker)
+# - REDIS_URL (Upstash or self-hosted)
+# - The five URL envs with your live Render URLs
 
 services:
-  # 1) Dify Web (Studio UI)
   - type: web
     name: dify-web
     runtime: docker
@@ -11,48 +13,48 @@ services:
       url: langgenius/dify-web:latest
     plan: starter
     envVars:
-      # URLs (auto-wire)
+      # ===== Required URLs (fill after deploy) =====
       - key: CONSOLE_WEB_URL
-        fromService: { name: dify-web, type: web, property: url }
+        sync: false
       - key: APP_WEB_URL
-        fromService: { name: dify-web, type: web, property: url }
+        sync: false
       - key: CONSOLE_API_URL
-        fromService: { name: dify-api, type: web, property: url }
+        sync: false
       - key: SERVICE_API_URL
-        fromService: { name: dify-api, type: web, property: url }
+        sync: false
       - key: APP_API_URL
-        fromService: { name: dify-api, type: web, property: url }
+        sync: false
       - key: FILES_URL
-        fromService: { name: dify-api, type: web, property: url }
+        sync: false
+      # =============================================
 
-      # Core secret (copy this into API & Worker after first apply)
+      # Core secret (generated here; copy into api & worker)
       - key: SECRET_KEY
         generateValue: true
 
       # Backing services
       - key: DATABASE_URL
         fromDatabase: { name: dify-postgres, property: connectionString }
-      # Fill this after you create Redis (Upstash or self-host)
       - key: REDIS_URL
         sync: false
 
-      # ===== Gemini as default =====
+      # Gemini as default
       - key: DEFAULT_MODEL_PROVIDER
         value: google
       - key: GOOGLE_API_KEY
         sync: false
       - key: GOOGLE_MODEL
         value: gemini-1.5-flash
-      # ============================
 
-      # Optional: leave OpenAI blank if unused
+      # Optional: leave OpenAI blank
       - key: OPENAI_API_KEY
         sync: false
 
-      # Storage: choose ONE (local requires disks on API & Worker)
+      # Storage choice (uncomment one block across ALL three services)
+      # Local:
       # - key: STORAGE_TYPE
       #   value: local
-      # or S3:
+      # S3:
       # - key: STORAGE_TYPE
       #   value: s3
       # - key: S3_ENDPOINT
@@ -66,21 +68,6 @@ services:
       # - key: S3_SECRET_KEY
       #   sync: false
 
-      # SMTP (optional)
-      # - key: MAIL_TYPE
-      #   value: smtp
-      # - key: SMTP_SERVER
-      #   value: smtp.sendgrid.net
-      # - key: SMTP_PORT
-      #   value: "587"
-      # - key: SMTP_USERNAME
-      #   value: apikey
-      # - key: SMTP_PASSWORD
-      #   sync: false
-      # - key: MAIL_DEFAULT_SEND_FROM
-      #   value: noreply@example.com
-
-  # 2) Dify API (REST + file server)
   - type: web
     name: dify-api
     runtime: docker
@@ -88,46 +75,45 @@ services:
       url: langgenius/dify-api:latest
     plan: starter
     envVars:
+      # ===== Same URL keys; fill after deploy =====
       - key: SERVICE_API_URL
-        fromService: { name: dify-api, type: web, property: url }
+        sync: false
       - key: CONSOLE_API_URL
-        fromService: { name: dify-api, type: web, property: url }
+        sync: false
       - key: APP_API_URL
-        fromService: { name: dify-api, type: web, property: url }
+        sync: false
       - key: FILES_URL
-        fromService: { name: dify-api, type: web, property: url }
+        sync: false
       - key: CONSOLE_WEB_URL
-        fromService: { name: dify-web, type: web, property: url }
+        sync: false
       - key: APP_WEB_URL
-        fromService: { name: dify-web, type: web, property: url }
+        sync: false
+      # ============================================
 
-      # Copy SECRET_KEY from dify-web after first apply
       - key: SECRET_KEY
         sync: false
-
       - key: DATABASE_URL
         fromDatabase: { name: dify-postgres, property: connectionString }
       - key: REDIS_URL
         sync: false
 
-      # ===== Gemini defaults =====
+      # Gemini defaults
       - key: DEFAULT_MODEL_PROVIDER
         value: google
       - key: GOOGLE_API_KEY
         sync: false
       - key: GOOGLE_MODEL
         value: gemini-1.5-flash
-      # ===========================
+
       - key: OPENAI_API_KEY
         sync: false
 
-    # Uncomment ONLY if using LOCAL storage
+    # If using LOCAL storage, mount disk at the SAME path as worker:
     # disk:
     #   name: dify-storage
     #   mountPath: /app/api/storage
     #   sizeGB: 5
 
-  # 3) Dify Worker (background jobs)
   - type: worker
     name: dify-worker
     runtime: docker
@@ -142,18 +128,18 @@ services:
       - key: REDIS_URL
         sync: false
 
-      # ===== Gemini defaults =====
+      # Gemini defaults
       - key: DEFAULT_MODEL_PROVIDER
         value: google
       - key: GOOGLE_API_KEY
         sync: false
       - key: GOOGLE_MODEL
         value: gemini-1.5-flash
-      # ===========================
+
       - key: OPENAI_API_KEY
         sync: false
 
-    # Uncomment ONLY if using LOCAL storage (path must match API)
+    # If using LOCAL storage, mount disk (path must match API):
     # disk:
     #   name: dify-storage
     #   mountPath: /app/api/storage
