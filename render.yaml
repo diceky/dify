@@ -3,7 +3,7 @@ services:
     name: dify-web
     env: docker
     image:
-      name: langgenius/dify-web:latest
+      url: langgenius/dify-web:latest
     plan: starter
     envVars:
       - key: CONSOLE_WEB_URL
@@ -50,7 +50,7 @@ services:
     name: dify-api
     env: docker
     image:
-      name: langgenius/dify-api:latest
+      url: langgenius/dify-api:latest
     plan: starter
     envVars:
       - key: SERVICE_API_URL
@@ -85,7 +85,7 @@ services:
     name: dify-worker
     env: docker
     image:
-      name: langgenius/dify-worker:latest
+      url: langgenius/dify-worker:latest
     plan: starter
     envVars:
       - key: SECRET_KEY
