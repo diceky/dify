@@ -1,9 +1,9 @@
 services:
   - type: web
     name: dify-web
-    runtime: docker
+    env: docker
     image:
-      url: langgenius/dify-web:latest
+      name: langgenius/dify-web:latest
     plan: starter
     envVars:
       - key: CONSOLE_WEB_URL
@@ -48,9 +48,9 @@ services:
 
   - type: web
     name: dify-api
-    runtime: docker
+    env: docker
     image:
-      url: langgenius/dify-api:latest
+      name: langgenius/dify-api:latest
     plan: starter
     envVars:
       - key: SERVICE_API_URL
@@ -83,9 +83,9 @@ services:
 
   - type: worker
     name: dify-worker
-    runtime: docker
+    env: docker
     image:
-      url: langgenius/dify-worker:latest
+      name: langgenius/dify-worker:latest
     plan: starter
     envVars:
       - key: SECRET_KEY
